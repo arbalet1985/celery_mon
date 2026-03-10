@@ -1,0 +1,19 @@
+# Celery monitor configuration
+
+celery:
+  # Path to Celery app (same as -A)
+  app: "your_project.celery:app"
+
+zabbix:
+  server: "zabbix.example.com"
+  port: 10051
+  hostname: "celery-production-1"
+
+# Send interval in seconds (daemon mode)
+interval: 60
+
+# Optional: limit to specific queues (empty = all from app.conf)
+queues: []
+
+# Optional: limit to specific tasks (empty = all)
+tasks: []

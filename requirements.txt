@@ -1,0 +1,4 @@
+celery>=5.5.3
+redis
+PyYAML
+zabbix_utils

@@ -1,0 +1,230 @@
+"""Celery Events collector for task and worker metrics.
+
+Aggregates task-started, task-succeeded, task-failed, task-retried,
+task-received, worker-heartbeat events into in-memory counters.
+"""
+
+import logging
+import threading
+from collections import defaultdict
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from celery import Celery
+
+logger = logging.getLogger(__name__)
+
+
+class EventsCollector:
+    """Collects metrics from Celery events and provides aggregated counters."""
+
+    def __init__(
+        self,
+        app: "Celery",
+        task_filter: list[str] | None = None,
+        queue_filter: list[str] | None = None,
+    ) -> None:
+        self.app = app
+        self.task_filter = set(task_filter or [])
+        self.queue_filter = set(queue_filter or [])
+
+        self._lock = threading.Lock()
+        self._task_started = 0
+        self._task_succeeded = 0
+        self._task_failed = 0
+        self._task_retried = 0
+
+        # Per-task counters
+        self._task_started_by_name: dict[str, int] = defaultdict(int)
+        self._task_succeeded_by_name: dict[str, int] = defaultdict(int)
+        self._task_failed_by_name: dict[str, int] = defaultdict(int)
+        self._task_retried_by_name: dict[str, int] = defaultdict(int)
+
+        # Runtime for avg: sum and count per task
+        self._runtime_sum_by_name: dict[str, float] = defaultdict(float)
+        self._runtime_count_by_name: dict[str, int] = defaultdict(int)
+
+        # task_id -> (queue, received_ts) for latency
+        self._pending_tasks: dict[str, tuple[str, float]] = {}
+        self._queue_latencies: dict[str, list[float]] = defaultdict(list)
+        self._queue_throughput_in: dict[str, int] = defaultdict(int)
+        self._queue_throughput_out: dict[str, int] = defaultdict(int)
+
+        # worker -> last heartbeat timestamp
+        self._worker_last_seen: dict[str, float] = {}
+
+        self._state = self.app.events.State()
+
+    def _should_track_task(self, task_name: str, queue: str) -> bool:
+        if self.task_filter and task_name not in self.task_filter:
+            return False
+        if self.queue_filter and queue and queue not in self.queue_filter:
+            return False
+        return True
+
+    def _get_handlers(self) -> dict[str, Any]:
+        def handle_task_received(event: dict) -> None:
+            state = self._state
+            state.event(event)
+            task = state.tasks.get(event.get("uuid"))
+            if not task:
+                return
+            task_name = getattr(task, "name", "unknown")
+            queue = getattr(task, "queue", None) or event.get("queue", "unknown")
+            if not self._should_track_task(task_name, queue):
+                return
+            with self._lock:
+                ts = event.get("timestamp") or 0
+                self._pending_tasks[event["uuid"]] = (queue, ts)
+                self._queue_throughput_in[queue] += 1
+
+        def handle_task_started(event: dict) -> None:
+            state = self._state
+            state.event(event)
+            task = state.tasks.get(event.get("uuid"))
+            if not task:
+                return
+            task_name = getattr(task, "name", "unknown")
+            queue = getattr(task, "queue", None) or "unknown"
+            if not self._should_track_task(task_name, queue):
+                return
+            with self._lock:
+                self._task_started += 1
+                self._task_started_by_name[task_name] += 1
+                self._queue_throughput_out[queue] += 1
+
+                # Latency: started_ts - received_ts
+                pending = self._pending_tasks.pop(event["uuid"], None)
+                if pending:
+                    q, recv_ts = pending
+                    started_ts = event.get("timestamp") or 0
+                    if recv_ts > 0:
+                        self._queue_latencies[q].append(started_ts - recv_ts)
+
+        def handle_task_succeeded(event: dict) -> None:
+            state = self._state
+            state.event(event)
+            task = state.tasks.get(event.get("uuid"))
+            if not task:
+                return
+            task_name = getattr(task, "name", "unknown")
+            queue = getattr(task, "queue", None) or "unknown"
+            if not self._should_track_task(task_name, queue):
+                return
+            runtime = event.get("runtime")
+            with self._lock:
+                self._task_succeeded += 1
+                self._task_succeeded_by_name[task_name] += 1
+                if runtime is not None:
+                    self._runtime_sum_by_name[task_name] += float(runtime)
+                    self._runtime_count_by_name[task_name] += 1
+
+        def handle_task_failed(event: dict) -> None:
+            state = self._state
+            state.event(event)
+            task = state.tasks.get(event.get("uuid"))
+            task_name = getattr(task, "name", "unknown") if task else "unknown"
+            queue = getattr(task, "queue", "unknown") if task else "unknown"
+            if not self._should_track_task(task_name, queue):
+                return
+            with self._lock:
+                self._task_failed += 1
+                self._task_failed_by_name[task_name] += 1
+
+        def handle_task_retried(event: dict) -> None:
+            state = self._state
+            state.event(event)
+            task = state.tasks.get(event.get("uuid"))
+            task_name = getattr(task, "name", "unknown") if task else "unknown"
+            queue = getattr(task, "queue", "unknown") if task else "unknown"
+            if not self._should_track_task(task_name, queue):
+                return
+            with self._lock:
+                self._task_retried += 1
+                self._task_retried_by_name[task_name] += 1
+
+        def handle_worker_heartbeat(event: dict) -> None:
+            state = self._state
+            state.event(event)
+            hostname = event.get("hostname", "")
+            ts = event.get("timestamp") or 0
+            with self._lock:
+                self._worker_last_seen[hostname] = ts
+
+        return {
+            "task-received": handle_task_received,
+            "task-started": handle_task_started,
+            "task-succeeded": handle_task_succeeded,
+            "task-failed": handle_task_failed,
+            "task-retried": handle_task_retried,
+            "worker-heartbeat": handle_worker_heartbeat,
+            "*": self._state.event,
+        }
+
+    def run(self, limit: int | None = None, timeout: float | None = None) -> None:
+        """Blocking: capture events. Used in daemon mode in a thread."""
+        handlers = self._get_handlers()
+        try:
+            with self.app.connection() as conn:
+                recv = self.app.events.Receiver(conn, handlers=handlers)
+                recv.capture(limit=limit, timeout=timeout, wakeup=True)
+        except Exception as e:
+            logger.error("Events receiver error: %s", e, exc_info=True)
+
+    def get_and_reset(self) -> dict[str, Any]:
+        """Return current counters and reset them for next interval."""
+        with self._lock:
+            data = {
+                "task_started": self._task_started,
+                "task_succeeded": self._task_succeeded,
+                "task_failed": self._task_failed,
+                "task_retried": self._task_retried,
+                "task_started_by_name": dict(self._task_started_by_name),
+                "task_succeeded_by_name": dict(self._task_succeeded_by_name),
+                "task_failed_by_name": dict(self._task_failed_by_name),
+                "task_retried_by_name": dict(self._task_retried_by_name),
+                "runtime_sum_by_name": dict(self._runtime_sum_by_name),
+                "runtime_count_by_name": dict(self._runtime_count_by_name),
+                "queue_latencies": {k: list(v) for k, v in self._queue_latencies.items()},
+                "queue_throughput_in": dict(self._queue_throughput_in),
+                "queue_throughput_out": dict(self._queue_throughput_out),
+                "worker_last_seen": dict(self._worker_last_seen),
+            }
+
+            # Reset counters
+            self._task_started = 0
+            self._task_succeeded = 0
+            self._task_failed = 0
+            self._task_retried = 0
+            self._task_started_by_name.clear()
+            self._task_succeeded_by_name.clear()
+            self._task_failed_by_name.clear()
+            self._task_retried_by_name.clear()
+            self._runtime_sum_by_name.clear()
+            self._runtime_count_by_name.clear()
+            self._queue_latencies.clear()
+            self._queue_throughput_in.clear()
+            self._queue_throughput_out.clear()
+            # Keep worker_last_seen; don't reset
+
+        return data
+
+    def get_snapshot(self) -> dict[str, Any]:
+        """Non-destructive snapshot of current counters (for inspection)."""
+        with self._lock:
+            return {
+                "task_started": self._task_started,
+                "task_succeeded": self._task_succeeded,
+                "task_failed": self._task_failed,
+                "task_retried": self._task_retried,
+                "task_started_by_name": dict(self._task_started_by_name),
+                "task_succeeded_by_name": dict(self._task_succeeded_by_name),
+                "task_failed_by_name": dict(self._task_failed_by_name),
+                "task_retried_by_name": dict(self._task_retried_by_name),
+                "runtime_sum_by_name": dict(self._runtime_sum_by_name),
+                "runtime_count_by_name": dict(self._runtime_count_by_name),
+                "queue_latencies": {k: list(v) for k, v in self._queue_latencies.items()},
+                "queue_throughput_in": dict(self._queue_throughput_in),
+                "queue_throughput_out": dict(self._queue_throughput_out),
+                "worker_last_seen": dict(self._worker_last_seen),
+            }

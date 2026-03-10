@@ -1,0 +1,153 @@
+"""Runner for daemon, one-shot, and discover modes."""
+
+import json
+import logging
+import sys
+import threading
+import time
+from typing import Any
+
+from .config import load_config
+from .events_collector import EventsCollector
+from .metrics import collect_inspect, collect_queue_lengths, get_celery_app, get_queue_list
+from .zabbix_exporter import ZabbixExporter, _sanitize_key_param
+
+logger = logging.getLogger(__name__)
+
+
+def run_daemon(config: dict[str, Any], app) -> None:
+    """Run event consumer in a thread and periodically send metrics to Zabbix."""
+    interval = config.get("interval", 60)
+    zabbix_cfg = config.get("zabbix", {})
+    queues = config.get("queues") or []
+    tasks = config.get("tasks") or []
+
+    exporter = ZabbixExporter(
+        hostname=zabbix_cfg.get("hostname", "celery-host"),
+        server=zabbix_cfg.get("server", "127.0.0.1"),
+        port=int(zabbix_cfg.get("port", 10051)),
+    )
+
+    collector = EventsCollector(app, task_filter=tasks or None, queue_filter=queues or None)
+    collector_done = threading.Event()
+
+    def events_thread() -> None:
+        try:
+            collector.run(limit=None, timeout=None)
+        except Exception as e:
+            logger.error("Events receiver stopped: %s", e)
+        finally:
+            collector_done.set()
+
+    thread = threading.Thread(target=events_thread, daemon=True)
+    thread.start()
+    logger.info("Events collector started, interval=%ds", interval)
+
+    try:
+        while not collector_done.is_set():
+            time.sleep(interval)
+            if collector_done.is_set():
+                break
+
+            events_data = collector.get_and_reset()
+            inspect_data = {}
+            queue_lengths = {}
+
+            try:
+                inspect_data = collect_inspect(app)
+            except Exception as e:
+                logger.warning("Inspect failed: %s", e)
+
+            try:
+                qlist = queues or get_queue_list(app)
+                queue_lengths = collect_queue_lengths(app, qlist)
+            except Exception as e:
+                logger.warning("Queue lengths failed: %s", e)
+
+            try:
+                exporter.send(
+                    events_data=events_data,
+                    inspect_data=inspect_data,
+                    queue_lengths=queue_lengths,
+                    interval_sec=float(interval),
+                )
+            except Exception as e:
+                logger.error("Zabbix send failed: %s", e)
+
+    except KeyboardInterrupt:
+        logger.info("Stopping daemon")
+    collector_done.set()
+
+
+def run_once(config: dict[str, Any], app) -> None:
+    """One-shot: collect inspect + queue lengths, send to Zabbix, exit."""
+    zabbix_cfg = config.get("zabbix", {})
+    queues = config.get("queues") or []
+
+    exporter = ZabbixExporter(
+        hostname=zabbix_cfg.get("hostname", "celery-host"),
+        server=zabbix_cfg.get("server", "127.0.0.1"),
+        port=int(zabbix_cfg.get("port", 10051)),
+    )
+
+    inspect_data = {}
+    queue_lengths = {}
+
+    try:
+        inspect_data = collect_inspect(app)
+    except Exception as e:
+        logger.warning("Inspect failed: %s", e)
+
+    try:
+        qlist = queues or get_queue_list(app)
+        queue_lengths = collect_queue_lengths(app, qlist)
+    except Exception as e:
+        logger.warning("Queue lengths failed: %s", e)
+
+    try:
+        ok = exporter.send(
+            events_data=None,
+            inspect_data=inspect_data,
+            queue_lengths=queue_lengths,
+            interval_sec=60.0,
+        )
+        sys.exit(0 if ok else 1)
+    except Exception as e:
+        logger.error("Zabbix send failed: %s", e)
+        sys.exit(1)
+
+
+def run_discover(config: dict[str, Any], app, target: str) -> None:
+    """Output LLD JSON for tasks, queues, or workers."""
+    data: list[dict[str, str]] = []
+
+    if target == "tasks":
+        try:
+            inspect_data = collect_inspect(app)
+            reg = inspect_data.get("registered", [])
+            for name in reg:
+                data.append({"{#TASK_NAME}": _sanitize_key_param(name)})
+        except Exception as e:
+            logger.error("Discover tasks failed: %s", e)
+
+    elif target == "queues":
+        try:
+            queues = config.get("queues") or get_queue_list(app)
+            for q in queues:
+                data.append({"{#QUEUE_NAME}": _sanitize_key_param(q)})
+        except Exception as e:
+            logger.error("Discover queues failed: %s", e)
+
+    elif target == "workers":
+        try:
+            inspect_data = collect_inspect(app)
+            for worker in inspect_data.get("stats", {}).keys():
+                data.append({"{#WORKER_NAME}": _sanitize_key_param(worker)})
+        except Exception as e:
+            logger.error("Discover workers failed: %s", e)
+
+    else:
+        logger.error("Unknown discover target: %s", target)
+        sys.exit(1)
+
+    print(json.dumps({"data": data}))

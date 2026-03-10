@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zabbix_export>
+    <version>6.0</version>
+    <date>2025-03-10T12:00:00Z</date>
+    <groups>
+        <group>
+            <name>Templates/Applications</name>
+        </group>
+    </groups>
+    <templates>
+        <template>
+            <template>Template App Celery Monitor</template>
+            <name>Template App Celery Monitor</name>
+            <description>Celery metrics from celery_monitor (zabbix_sender). Host name must match ZABBIX_HOSTNAME in config.</description>
+            <groups>
+                <group>
+                    <name>Templates/Applications</name>
+                </group>
+            </groups>
+            <items>
+                <item>
+                    <name>Celery tasks started</name>
+                    <key>celery.task.started</key>
+                    <type>TRAPPER</type>
+                    <value_type>UNSIGNED</value_type>
+                    <description>Number of started tasks per interval</description>
+                </item>
+                <item>
+                    <name>Celery tasks succeeded</name>
+                    <key>celery.task.succeeded</key>
+                    <type>TRAPPER</type>
+                    <value_type>UNSIGNED</value_type>
+                    <description>Number of successfully completed tasks per interval</description>
+                </item>
+                <item>
+                    <name>Celery tasks failed</name>
+                    <key>celery.task.failed</key>
+                    <type>TRAPPER</type>
+                    <value_type>UNSIGNED</value_type>
+                    <description>Number of failed tasks per interval</description>
+                </item>
+                <item>
+                    <name>Celery tasks retried</name>
+                    <key>celery.task.retried</key>
+                    <type>TRAPPER</type>
+                    <value_type>UNSIGNED</value_type>
+                    <description>Number of retried tasks per interval</description>
+                </item>
+                <item>
+                    <name>Celery workers online</name>
+                    <key>celery.workers.online</key>
+                    <type>TRAPPER</type>
+                    <value_type>UNSIGNED</value_type>
+                    <description>Number of online workers</description>
+                </item>
+            </items>
+            <discovery_rules>
+                <discovery_rule>
+                    <name>Celery tasks discovery</name>
+                    <key>celery.discover[tasks]</key>
+                    <type>ZABBIX_AGENT</type>
+                    <delay>1h</delay>
+                    <description>Requires UserParameter=celery.discover[*],/path/to/celery_monitor -A your_app --discover $1</description>
+                    <item_prototypes>
+                        <item_prototype>
+                            <name>Celery task failed [{#TASK_NAME}]</name>
+                            <key>celery.task.failed[{#TASK_NAME}]</key>
+                            <type>TRAPPER</type>
+                            <value_type>UNSIGNED</value_type>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Celery task succeeded [{#TASK_NAME}]</name>
+                            <key>celery.task.succeeded[{#TASK_NAME}]</key>
+                            <type>TRAPPER</type>
+                            <value_type>UNSIGNED</value_type>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Celery task runtime avg [{#TASK_NAME}]</name>
+                            <key>celery.task.runtime.avg[{#TASK_NAME}]</key>
+                            <type>TRAPPER</type>
+                            <value_type>FLOAT</value_type>
+                            <units>s</units>
+                        </item_prototype>
+                    </item_prototypes>
+                </discovery_rule>
+                <discovery_rule>
+                    <name>Celery queues discovery</name>
+                    <key>celery.discover[queues]</key>
+                    <type>ZABBIX_AGENT</type>
+                    <delay>1h</delay>
+                    <description>Requires UserParameter for celery_monitor --discover queues</description>
+                    <item_prototypes>
+                        <item_prototype>
+                            <name>Celery queue length [{#QUEUE_NAME}]</name>
+                            <key>celery.queue.length[{#QUEUE_NAME}]</key>
+                            <type>TRAPPER</type>
+                            <value_type>UNSIGNED</value_type>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Celery queue latency [{#QUEUE_NAME}]</name>
+                            <key>celery.queue.latency[{#QUEUE_NAME}]</key>
+                            <type>TRAPPER</type>
+                            <value_type>FLOAT</value_type>
+                            <units>s</units>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Celery queue throughput in [{#QUEUE_NAME}]</name>
+                            <key>celery.queue.throughput.in[{#QUEUE_NAME}]</key>
+                            <type>TRAPPER</type>
+                            <value_type>FLOAT</value_type>
+                            <units>ops</units>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Celery queue throughput out [{#QUEUE_NAME}]</name>
+                            <key>celery.queue.throughput.out[{#QUEUE_NAME}]</key>
+                            <type>TRAPPER</type>
+                            <value_type>FLOAT</value_type>
+                            <units>ops</units>
+                        </item_prototype>
+                    </item_prototypes>
+                </discovery_rule>
+                <discovery_rule>
+                    <name>Celery workers discovery</name>
+                    <key>celery.discover[workers]</key>
+                    <type>ZABBIX_AGENT</type>
+                    <delay>1h</delay>
+                    <description>Requires UserParameter for celery_monitor --discover workers</description>
+                    <item_prototypes>
+                        <item_prototype>
+                            <name>Celery worker online [{#WORKER_NAME}]</name>
+                            <key>celery.worker.online[{#WORKER_NAME}]</key>
+                            <type>TRAPPER</type>
+                            <value_type>UNSIGNED</value_type>
+                            <description>Last heartbeat timestamp</description>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Celery worker concurrency [{#WORKER_NAME}]</name>
+                            <key>celery.worker.concurrency[{#WORKER_NAME}]</key>
+                            <type>TRAPPER</type>
+                            <value_type>UNSIGNED</value_type>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Celery tasks active [{#WORKER_NAME}]</name>
+                            <key>celery.tasks.active[{#WORKER_NAME}]</key>
+                            <type>TRAPPER</type>
+                            <value_type>UNSIGNED</value_type>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Celery tasks prefetched [{#WORKER_NAME}]</name>
+                            <key>celery.tasks.prefetched[{#WORKER_NAME}]</key>
+                            <type>TRAPPER</type>
+                            <value_type>UNSIGNED</value_type>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Celery tasks scheduled [{#WORKER_NAME}]</name>
+                            <key>celery.tasks.scheduled[{#WORKER_NAME}]</key>
+                            <type>TRAPPER</type>
+                            <value_type>UNSIGNED</value_type>
+                        </item_prototype>
+                    </item_prototypes>
+                </discovery_rule>
+            </discovery_rules>
+        </template>
+    </templates>
+</zabbix_export>

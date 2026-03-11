@@ -4,11 +4,13 @@
     <date>2025-03-10T12:00:00Z</date>
     <groups>
         <group>
+            <uuid>6ba7b810-9dad-11d1-80b4-00c04fd430c8</uuid>
             <name>Templates/Applications</name>
         </group>
     </groups>
     <templates>
         <template>
+            <uuid>123e4567-e89b-12d3-a456-426614174000</uuid>
             <template>Template App Celery Monitor</template>
             <name>Template App Celery Monitor</name>
             <description>Celery metrics from celery_monitor (zabbix_sender). Host name must match ZABBIX_HOSTNAME in config.</description>
@@ -19,143 +21,180 @@
             </groups>
             <items>
                 <item>
+                    <uuid>f47ac10b-58cc-4372-a567-0e02b2c3d479</uuid>
                     <name>Celery tasks started</name>
+                    <type>TRAP</type>
                     <key>celery.task.started</key>
-                    <type>TRAPPER</type>
-                    <value_type>UNSIGNED</value_type>
+                    <delay>0</delay>
+                    <value_type>FLOAT</value_type>
                     <description>Number of started tasks per interval</description>
                 </item>
                 <item>
+                    <uuid>872761a8-3a4e-4c68-9e63-93d5f4bf7dc4</uuid>
                     <name>Celery tasks succeeded</name>
+                    <type>TRAP</type>
                     <key>celery.task.succeeded</key>
-                    <type>TRAPPER</type>
-                    <value_type>UNSIGNED</value_type>
+                    <delay>0</delay>
+                    <value_type>FLOAT</value_type>
                     <description>Number of successfully completed tasks per interval</description>
                 </item>
                 <item>
+                    <uuid>a87ff679-a2f1-11cf-9d92-00aa00409e6d</uuid>
                     <name>Celery tasks failed</name>
+                    <type>TRAP</type>
                     <key>celery.task.failed</key>
-                    <type>TRAPPER</type>
-                    <value_type>UNSIGNED</value_type>
+                    <delay>0</delay>
+                    <value_type>FLOAT</value_type>
                     <description>Number of failed tasks per interval</description>
                 </item>
                 <item>
+                    <uuid>0f8fad5b-d9cb-469f-bf84-49d524e1d7c4</uuid>
                     <name>Celery tasks retried</name>
+                    <type>TRAP</type>
                     <key>celery.task.retried</key>
-                    <type>TRAPPER</type>
-                    <value_type>UNSIGNED</value_type>
+                    <delay>0</delay>
+                    <value_type>FLOAT</value_type>
                     <description>Number of retried tasks per interval</description>
                 </item>
                 <item>
+                    <uuid>8629d9a0-337a-41be-b38d-948adaa565d6</uuid>
                     <name>Celery workers online</name>
+                    <type>TRAP</type>
                     <key>celery.workers.online</key>
-                    <type>TRAPPER</type>
-                    <value_type>UNSIGNED</value_type>
+                    <delay>0</delay>
+                    <value_type>FLOAT</value_type>
                     <description>Number of online workers</description>
                 </item>
             </items>
             <discovery_rules>
                 <discovery_rule>
+                    <uuid>b4b3e91f-a8a5-4d4c-bb94-3f3b6a7a23a4</uuid>
                     <name>Celery tasks discovery</name>
                     <key>celery.discover[tasks]</key>
-                    <type>ZABBIX_AGENT</type>
+                    <type>TRAP</type>
                     <delay>1h</delay>
                     <description>Requires UserParameter=celery.discover[*],/path/to/celery_monitor -A your_app --discover $1</description>
                     <item_prototypes>
                         <item_prototype>
+                            <uuid>2d8e4a2d-8f3e-4c75-9c3e-5d2a8f6b3e4a</uuid>
                             <name>Celery task failed [{#TASK_NAME}]</name>
+                            <type>TRAP</type>
                             <key>celery.task.failed[{#TASK_NAME}]</key>
-                            <type>TRAPPER</type>
-                            <value_type>UNSIGNED</value_type>
+                            <delay>0</delay>
+                            <value_type>FLOAT</value_type>
                         </item_prototype>
                         <item_prototype>
+                            <uuid>550e8400-e29b-41d4-a716-446655440001</uuid>
                             <name>Celery task succeeded [{#TASK_NAME}]</name>
+                            <type>TRAP</type>
                             <key>celery.task.succeeded[{#TASK_NAME}]</key>
-                            <type>TRAPPER</type>
-                            <value_type>UNSIGNED</value_type>
+                            <delay>0</delay>
+                            <value_type>FLOAT</value_type>
                         </item_prototype>
                         <item_prototype>
+                            <uuid>6ba7b810-9dad-11d1-80b4-00c04fd430c81</uuid>
                             <name>Celery task runtime avg [{#TASK_NAME}]</name>
+                            <type>TRAP</type>
                             <key>celery.task.runtime.avg[{#TASK_NAME}]</key>
-                            <type>TRAPPER</type>
+                            <delay>0</delay>
                             <value_type>FLOAT</value_type>
                             <units>s</units>
                         </item_prototype>
                     </item_prototypes>
                 </discovery_rule>
                 <discovery_rule>
+                    <uuid>123e4567-e89b-12d3-a456-426614174001</uuid>
                     <name>Celery queues discovery</name>
                     <key>celery.discover[queues]</key>
-                    <type>ZABBIX_AGENT</type>
+                    <type>TRAP</type>
                     <delay>1h</delay>
                     <description>Requires UserParameter for celery_monitor --discover queues</description>
                     <item_prototypes>
                         <item_prototype>
+                            <uuid>f47ac10b-58cc-4372-a567-0e02b2c3d4791</uuid>
                             <name>Celery queue length [{#QUEUE_NAME}]</name>
+                            <type>TRAP</type>
                             <key>celery.queue.length[{#QUEUE_NAME}]</key>
-                            <type>TRAPPER</type>
-                            <value_type>UNSIGNED</value_type>
+                            <delay>0</delay>
+                            <value_type>FLOAT</value_type>
                         </item_prototype>
                         <item_prototype>
+                            <uuid>872761a8-3a4e-4c68-9e63-93d5f4bf7dc41</uuid>
                             <name>Celery queue latency [{#QUEUE_NAME}]</name>
+                            <type>TRAP</type>
                             <key>celery.queue.latency[{#QUEUE_NAME}]</key>
-                            <type>TRAPPER</type>
+                            <delay>0</delay>
                             <value_type>FLOAT</value_type>
                             <units>s</units>
                         </item_prototype>
                         <item_prototype>
+                            <uuid>a87ff679-a2f1-11cf-9d92-00aa00409e6d1</uuid>
                             <name>Celery queue throughput in [{#QUEUE_NAME}]</name>
+                            <type>TRAP</type>
                             <key>celery.queue.throughput.in[{#QUEUE_NAME}]</key>
-                            <type>TRAPPER</type>
+                            <delay>0</delay>
                             <value_type>FLOAT</value_type>
                             <units>ops</units>
                         </item_prototype>
                         <item_prototype>
+                            <uuid>0f8fad5b-d9cb-469f-bf84-49d524e1d7c41</uuid>
                             <name>Celery queue throughput out [{#QUEUE_NAME}]</name>
+                            <type>TRAP</type>
                             <key>celery.queue.throughput.out[{#QUEUE_NAME}]</key>
-                            <type>TRAPPER</type>
+                            <delay>0</delay>
                             <value_type>FLOAT</value_type>
                             <units>ops</units>
                         </item_prototype>
                     </item_prototypes>
                 </discovery_rule>
                 <discovery_rule>
+                    <uuid>8629d9a0-337a-41be-b38d-948adaa565d61</uuid>
                     <name>Celery workers discovery</name>
                     <key>celery.discover[workers]</key>
-                    <type>ZABBIX_AGENT</type>
+                    <type>TRAP</type>
                     <delay>1h</delay>
                     <description>Requires UserParameter for celery_monitor --discover workers</description>
                     <item_prototypes>
                         <item_prototype>
+                            <uuid>b4b3e91f-a8a5-4d4c-bb94-3f3b6a7a23a41</uuid>
                             <name>Celery worker online [{#WORKER_NAME}]</name>
+                            <type>TRAP</type>
                             <key>celery.worker.online[{#WORKER_NAME}]</key>
-                            <type>TRAPPER</type>
-                            <value_type>UNSIGNED</value_type>
+                            <delay>0</delay>
+                            <value_type>FLOAT</value_type>
                             <description>Last heartbeat timestamp</description>
                         </item_prototype>
                         <item_prototype>
+                            <uuid>2d8e4a2d-8f3e-4c75-9c3e-5d2a8f6b3e4a1</uuid>
                             <name>Celery worker concurrency [{#WORKER_NAME}]</name>
+                            <type>TRAP</type>
                             <key>celery.worker.concurrency[{#WORKER_NAME}]</key>
-                            <type>TRAPPER</type>
-                            <value_type>UNSIGNED</value_type>
+                            <delay>0</delay>
+                            <value_type>FLOAT</value_type>
                         </item_prototype>
                         <item_prototype>
+                            <uuid>550e8400-e29b-41d4-a716-446655440002</uuid>
                             <name>Celery tasks active [{#WORKER_NAME}]</name>
+                            <type>TRAP</type>
                             <key>celery.tasks.active[{#WORKER_NAME}]</key>
-                            <type>TRAPPER</type>
-                            <value_type>UNSIGNED</value_type>
+                            <delay>0</delay>
+                            <value_type>FLOAT</value_type>
                         </item_prototype>
                         <item_prototype>
+                            <uuid>6ba7b810-9dad-11d1-80b4-00c04fd430c82</uuid>
                             <name>Celery tasks prefetched [{#WORKER_NAME}]</name>
+                            <type>TRAP</type>
                             <key>celery.tasks.prefetched[{#WORKER_NAME}]</key>
-                            <type>TRAPPER</type>
-                            <value_type>UNSIGNED</value_type>
+                            <delay>0</delay>
+                            <value_type>FLOAT</value_type>
                         </item_prototype>
                         <item_prototype>
+                            <uuid>123e4567-e89b-12d3-a456-426614174002</uuid>
                             <name>Celery tasks scheduled [{#WORKER_NAME}]</name>
+                            <type>TRAP</type>
                             <key>celery.tasks.scheduled[{#WORKER_NAME}]</key>
-                            <type>TRAPPER</type>
-                            <value_type>UNSIGNED</value_type>
+                            <delay>0</delay>
+                            <value_type>FLOAT</value_type>
                         </item_prototype>
                     </item_prototypes>
                 </discovery_rule>

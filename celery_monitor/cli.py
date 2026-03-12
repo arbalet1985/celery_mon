@@ -48,6 +48,11 @@ def main() -> None:
         action="store_true",
         help="Enable debug logging",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print metrics to stdout instead of sending to Zabbix",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -71,9 +76,9 @@ def main() -> None:
     if args.discover:
         run_discover(config, app, args.discover)
     elif args.once:
-        run_once(config, app)
+        run_once(config, app, dry_run=args.dry_run)
     elif args.daemon:
-        run_daemon(config, app)
+        run_daemon(config, app, dry_run=args.dry_run)
     else:
         parser.print_help()
         logger.error("Specify one of: --daemon, --once, --discover TARGET")

@@ -15,18 +15,20 @@ from .zabbix_exporter import ZabbixExporter, _sanitize_key_param
 logger = logging.getLogger(__name__)
 
 
-def run_daemon(config: dict[str, Any], app) -> None:
+def run_daemon(config: dict[str, Any], app, dry_run: bool = False) -> None:
     """Run event consumer in a thread and periodically send metrics to Zabbix."""
     interval = config.get("interval", 60)
     zabbix_cfg = config.get("zabbix", {})
     queues = config.get("queues") or []
     tasks = config.get("tasks") or []
 
-    exporter = ZabbixExporter(
-        hostname=zabbix_cfg.get("hostname", "celery-host"),
-        server=zabbix_cfg.get("server", "127.0.0.1"),
-        port=int(zabbix_cfg.get("port", 10051)),
-    )
+    exporter = None
+    if not dry_run:
+        exporter = ZabbixExporter(
+            hostname=zabbix_cfg.get("hostname", "celery-host"),
+            server=zabbix_cfg.get("server", "127.0.0.1"),
+            port=int(zabbix_cfg.get("port", 10051)),
+        )
 
     collector = EventsCollector(app, task_filter=tasks or None, queue_filter=queues or None)
     collector_done = threading.Event()
@@ -64,31 +66,31 @@ def run_daemon(config: dict[str, Any], app) -> None:
             except Exception as e:
                 logger.warning("Queue lengths failed: %s", e)
 
-            try:
-                exporter.send(
-                    events_data=events_data,
-                    inspect_data=inspect_data,
-                    queue_lengths=queue_lengths,
-                    interval_sec=float(interval),
-                )
-            except Exception as e:
-                logger.error("Zabbix send failed: %s", e)
+            if dry_run:
+                print("=== DRY RUN (metrics) ===")
+                print("events:", json.dumps(events_data, indent=2, default=str))
+                print("inspect:", json.dumps(inspect_data, indent=2, default=str))
+                print("queue_lengths:", json.dumps(queue_lengths, indent=2))
+            else:
+                try:
+                    exporter.send(
+                        events_data=events_data,
+                        inspect_data=inspect_data,
+                        queue_lengths=queue_lengths,
+                        interval_sec=float(interval),
+                    )
+                except Exception as e:
+                    logger.error("Zabbix send failed: %s", e)
 
     except KeyboardInterrupt:
         logger.info("Stopping daemon")
     collector_done.set()
 
 
-def run_once(config: dict[str, Any], app) -> None:
+def run_once(config: dict[str, Any], app, dry_run: bool = False) -> None:
     """One-shot: collect inspect + queue lengths, send to Zabbix, exit."""
     zabbix_cfg = config.get("zabbix", {})
     queues = config.get("queues") or []
-
-    exporter = ZabbixExporter(
-        hostname=zabbix_cfg.get("hostname", "celery-host"),
-        server=zabbix_cfg.get("server", "127.0.0.1"),
-        port=int(zabbix_cfg.get("port", 10051)),
-    )
 
     inspect_data = {}
     queue_lengths = {}
@@ -104,6 +106,17 @@ def run_once(config: dict[str, Any], app) -> None:
     except Exception as e:
         logger.warning("Queue lengths failed: %s", e)
 
+    if dry_run:
+        print("=== DRY RUN (metrics, no Zabbix send) ===")
+        print("inspect:", json.dumps(inspect_data, indent=2, default=str))
+        print("queue_lengths:", json.dumps(queue_lengths, indent=2))
+        sys.exit(0)
+
+    exporter = ZabbixExporter(
+        hostname=zabbix_cfg.get("hostname", "celery-host"),
+        server=zabbix_cfg.get("server", "127.0.0.1"),
+        port=int(zabbix_cfg.get("port", 10051)),
+    )
     try:
         ok = exporter.send(
             events_data=None,

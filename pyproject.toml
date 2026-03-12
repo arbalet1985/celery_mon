@@ -15,8 +15,16 @@ dependencies = [
     "zabbix_utils",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]
+
 [project.scripts]
 celery_monitor = "celery_monitor.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["celery_monitor*"]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]

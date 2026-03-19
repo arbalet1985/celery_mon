@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 def run_daemon(config: dict[str, Any], app, dry_run: bool = False) -> None:
     """Run event consumer in a thread and periodically send metrics to Zabbix."""
     interval = config.get("interval", 60)
+    discovery_interval = config.get("discovery_interval", 3600)
     zabbix_cfg = config.get("zabbix", {})
     queues = config.get("queues") or []
     tasks = config.get("tasks") or []
@@ -32,6 +33,7 @@ def run_daemon(config: dict[str, Any], app, dry_run: bool = False) -> None:
 
     collector = EventsCollector(app, task_filter=tasks or None, queue_filter=queues or None)
     collector_done = threading.Event()
+    last_discovery_time = 0.0
 
     def events_thread() -> None:
         try:
@@ -43,13 +45,22 @@ def run_daemon(config: dict[str, Any], app, dry_run: bool = False) -> None:
 
     thread = threading.Thread(target=events_thread, daemon=True)
     thread.start()
-    logger.info("Events collector started, interval=%ds", interval)
+    logger.info("Events collector started, interval=%ds, discovery_interval=%ds", interval, discovery_interval)
+
+    if discovery_interval > 0:
+        _run_discovery(config, app, exporter, dry_run)
+        last_discovery_time = time.time()
 
     try:
         while not collector_done.is_set():
             time.sleep(interval)
             if collector_done.is_set():
                 break
+
+            now = time.time()
+            if discovery_interval > 0 and (now - last_discovery_time) >= discovery_interval:
+                _run_discovery(config, app, exporter, dry_run)
+                last_discovery_time = now
 
             events_data = collector.get_and_reset()
             inspect_data = {}
@@ -130,8 +141,8 @@ def run_once(config: dict[str, Any], app, dry_run: bool = False) -> None:
         sys.exit(1)
 
 
-def run_discover(config: dict[str, Any], app, target: str) -> None:
-    """Output LLD JSON for tasks, queues, or workers."""
+def _get_discovery_data(config: dict[str, Any], app, target: str) -> list[dict[str, str]]:
+    """Return LLD data for tasks, queues, or workers."""
     data: list[dict[str, str]] = []
 
     if target == "tasks":
@@ -161,6 +172,21 @@ def run_discover(config: dict[str, Any], app, target: str) -> None:
 
     else:
         logger.error("Unknown discover target: %s", target)
-        sys.exit(1)
+    return data
 
+
+def _run_discovery(config: dict[str, Any], app, exporter: ZabbixExporter | None, dry_run: bool) -> None:
+    """Run discovery for tasks, queues, workers and send to Zabbix or print."""
+    for target in ("tasks", "queues", "workers"):
+        data = _get_discovery_data(config, app, target)
+        if dry_run:
+            print(f"=== DRY RUN (discovery {target}) ===")
+            print(json.dumps({"data": data}))
+        elif exporter:
+            exporter.send_discovery(target, data)
+
+
+def run_discover(config: dict[str, Any], app, target: str) -> None:
+    """Output LLD JSON for tasks, queues, or workers (CLI mode)."""
+    data = _get_discovery_data(config, app, target)
     print(json.dumps({"data": data}))

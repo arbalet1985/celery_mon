@@ -1,5 +1,6 @@
 """Zabbix metrics exporter via Sender protocol."""
 
+import json
 import logging
 from typing import Any
 
@@ -123,6 +124,31 @@ class ZabbixExporter:
             key = f"celery.queue.length[{_sanitize_key_param(queue)}]"
             items.append(ItemValue(self.hostname, key, length))
         return items
+
+    def send_discovery(self, target: str, lld_data: list[dict[str, str]]) -> bool:
+        """Send LLD JSON to Zabbix discovery rule via trapper.
+
+        target: "tasks", "queues", or "workers"
+        lld_data: list of dicts like [{"{#TASK_NAME}": "..."}, ...]
+        """
+        key = f"celery.discover[{target}]"
+        value = json.dumps({"data": lld_data})
+        items = [ItemValue(self.hostname, key, value)]
+        for attempt in range(self.retries + 1):
+            try:
+                resp = self.sender.send(items)
+                failed = getattr(resp, "failed", None)
+                if failed is None and hasattr(resp, "get"):
+                    failed = resp.get("failed", 1)
+                if failed is None:
+                    failed = 1
+                if failed == 0:
+                    logger.debug("Sent discovery %s with %d entries", target, len(lld_data))
+                    return True
+                logger.warning("Zabbix discovery send failed: %s", resp)
+            except Exception as e:
+                logger.warning("Zabbix discovery send attempt %d failed: %s", attempt + 1, e)
+        return False
 
     def send(
         self,

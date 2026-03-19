@@ -12,6 +12,10 @@ zabbix:
 # Send interval in seconds (daemon mode)
 interval: 60
 
+# Discovery interval in seconds (tasks, queues, workers). 0 = disabled.
+# Daemon sends LLD via trapper; no Zabbix agent UserParameter needed.
+discovery_interval: 3600
+
 # Optional: limit to specific queues (empty = all from app.conf)
 queues: []
 

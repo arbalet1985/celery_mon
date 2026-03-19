@@ -29,6 +29,7 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
             "hostname": "celery-host",
         },
         "interval": 60,
+        "discovery_interval": 3600,  # seconds, 0 = disabled
         "queues": [],
         "tasks": [],
         "worker_offline_threshold": 180,  # seconds
@@ -55,6 +56,11 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
     if os.environ.get("CELERY_MON_INTERVAL"):
         try:
             config["interval"] = int(os.environ["CELERY_MON_INTERVAL"])
+        except ValueError:
+            pass
+    if os.environ.get("CELERY_MON_DISCOVERY_INTERVAL"):
+        try:
+            config["discovery_interval"] = int(os.environ["CELERY_MON_DISCOVERY_INTERVAL"])
         except ValueError:
             pass
 

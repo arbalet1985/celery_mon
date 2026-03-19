@@ -21,6 +21,7 @@ def test_config_load():
     assert config["celery"]["app"] == "test.celery_app:app"
     assert config["zabbix"]["hostname"] == "celery-test-host"
     assert config["interval"] == 10
+    assert config["discovery_interval"] == 60
 
 
 def test_config_env_override(monkeypatch):
@@ -29,9 +30,11 @@ def test_config_env_override(monkeypatch):
 
     monkeypatch.setenv("ZABBIX_HOSTNAME", "env-host")
     monkeypatch.setenv("CELERY_APP", "myapp:app")
+    monkeypatch.setenv("CELERY_MON_DISCOVERY_INTERVAL", "300")
     config = load_config("test/config.yaml")
     assert config["zabbix"]["hostname"] == "env-host"
     assert config["celery"]["app"] == "myapp:app"
+    assert config["discovery_interval"] == 300
 
 
 def test_get_celery_app():

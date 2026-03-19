@@ -47,10 +47,11 @@ celery_monitor -A your_project.celery:app --discover workers
 
 - `celery.app` — путь к Celery-приложению
 - `zabbix.server`, `zabbix.port`, `zabbix.hostname` — параметры Zabbix
-- `interval` — интервал отправки в секундах (для daemon)
+- `interval` — интервал отправки метрик в секундах (для daemon)
+- `discovery_interval` — интервал discovery (tasks, queues, workers) в секундах; 0 — отключить. Daemon отправляет LLD через trapper
 - `queues`, `tasks` — опциональные фильтры
 
-Переменные окружения: `CELERY_APP`, `ZABBIX_SERVER`, `ZABBIX_PORT`, `ZABBIX_HOSTNAME`, `CELERY_MON_INTERVAL`.
+Переменные окружения: `CELERY_APP`, `ZABBIX_SERVER`, `ZABBIX_PORT`, `ZABBIX_HOSTNAME`, `CELERY_MON_INTERVAL`, `CELERY_MON_DISCOVERY_INTERVAL`.
 
 ## Метрики Zabbix
 
@@ -80,10 +81,14 @@ Task-level метрики (started, succeeded, failed, runtime) доступны
 
 Импортируйте `zabbix_template_celery_monitor.xml` в Zabbix: Data collection → Templates → Import.
 
-Для LLD (discovery) настройте Zabbix agent — добавьте в `zabbix_agentd.conf`:
+### LLD (discovery)
+
+**Вариант 1 (рекомендуется):** Daemon сам отправляет discovery через trapper. Задайте `discovery_interval` в конфиге (например, 3600 для 1 часа). UserParameter не нужен.
+
+**Вариант 2:** Через Zabbix agent — добавьте в `zabbix_agentd.conf`:
 
 ```ini
-UserParameter=celery.discover[*],/path/to/venv/bin/python /path/to/celery_monitor -A your_project.celery:app --discover $1
+UserParameter=celery.discover[*],/path/to/venv/bin/python /path/to/celery_monitor -A your_project.celery:app -c config.yaml --discover $1
 ```
 
 Имя хоста в Zabbix должно совпадать с `zabbix.hostname` в конфиге celery_monitor.

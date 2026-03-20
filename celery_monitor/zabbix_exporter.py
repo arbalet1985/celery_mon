@@ -74,6 +74,8 @@ class ZabbixExporter:
             items.append(ItemValue(self.hostname, key, avg))
 
         for queue, latencies in events_data.get("queue_latencies", {}).items():
+            if queue == "unknown":
+                continue  # Zabbix rejects unknown queue (not in discovery)
             if latencies:
                 avg_lat = round(sum(latencies) / len(latencies), 4)
             else:
@@ -82,11 +84,15 @@ class ZabbixExporter:
             items.append(ItemValue(self.hostname, key, avg_lat))
 
         for queue, count in events_data.get("queue_throughput_in", {}).items():
+            if queue == "unknown":
+                continue
             rate = round(count / interval_sec, 4) if interval_sec > 0 else 0
             key = f"celery.queue.throughput.in[{_sanitize_key_param(queue)}]"
             items.append(ItemValue(self.hostname, key, rate))
 
         for queue, count in events_data.get("queue_throughput_out", {}).items():
+            if queue == "unknown":
+                continue
             rate = round(count / interval_sec, 4) if interval_sec > 0 else 0
             key = f"celery.queue.throughput.out[{_sanitize_key_param(queue)}]"
             items.append(ItemValue(self.hostname, key, rate))

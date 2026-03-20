@@ -57,6 +57,17 @@ class EventsCollector:
 
         self._state = self.app.events.State()
 
+    def _default_queue(self):
+        return getattr(self.app.conf, "task_default_queue", "celery")
+
+    def _resolve_queue(self, queue, event=None):
+        """Return queue name; use default instead of 'unknown' so Zabbix accepts metrics."""
+        if queue and queue != "unknown":
+            return queue
+        if event and event.get("queue"):
+            return event["queue"]
+        return self._default_queue()
+
     def _should_track_task(self, task_name, queue):
         if self.task_filter and task_name not in self.task_filter:
             return False
@@ -72,7 +83,7 @@ class EventsCollector:
             if not task:
                 return
             task_name = getattr(task, "name", "unknown")
-            queue = getattr(task, "queue", None) or event.get("queue", "unknown")
+            queue = self._resolve_queue(getattr(task, "queue", None), event)
             if not self._should_track_task(task_name, queue):
                 return
             with self._lock:
@@ -87,7 +98,7 @@ class EventsCollector:
             if not task:
                 return
             task_name = getattr(task, "name", "unknown")
-            queue = getattr(task, "queue", None) or "unknown"
+            queue = self._resolve_queue(getattr(task, "queue", None))
             if not self._should_track_task(task_name, queue):
                 return
             with self._lock:
@@ -110,7 +121,7 @@ class EventsCollector:
             if not task:
                 return
             task_name = getattr(task, "name", "unknown")
-            queue = getattr(task, "queue", None) or "unknown"
+            queue = self._resolve_queue(getattr(task, "queue", None))
             if not self._should_track_task(task_name, queue):
                 return
             runtime = event.get("runtime")
@@ -126,7 +137,7 @@ class EventsCollector:
             state.event(event)
             task = state.tasks.get(event.get("uuid"))
             task_name = getattr(task, "name", "unknown") if task else "unknown"
-            queue = getattr(task, "queue", "unknown") if task else "unknown"
+            queue = self._resolve_queue(getattr(task, "queue", None) if task else None)
             if not self._should_track_task(task_name, queue):
                 return
             # Get error message from event or task state
@@ -154,7 +165,7 @@ class EventsCollector:
             state.event(event)
             task = state.tasks.get(event.get("uuid"))
             task_name = getattr(task, "name", "unknown") if task else "unknown"
-            queue = getattr(task, "queue", "unknown") if task else "unknown"
+            queue = self._resolve_queue(getattr(task, "queue", None) if task else None)
             if not self._should_track_task(task_name, queue):
                 return
             with self._lock:

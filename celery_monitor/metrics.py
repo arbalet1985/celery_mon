@@ -62,8 +62,16 @@ def collect_inspect(app, timeout=5.0):
         stats = inspect.stats()
         if stats:
             for worker, s in stats.items():
+                total_by_name = s.get("total") or {}
+                total_count = sum(total_by_name.values()) if isinstance(total_by_name, dict) else 0
+                rusage = s.get("rusage") or {}
                 result["stats"][worker] = {
                     "concurrency": s.get("pool", {}).get("max-concurrency", 0),
+                    "uptime": s.get("uptime"),
+                    "pid": s.get("pid"),
+                    "prefetch_count": s.get("prefetch_count"),
+                    "total": total_count,
+                    "maxrss": rusage.get("maxrss"),
                 }
     except Exception as e:
         logger.warning("inspect.stats failed: %s", e)

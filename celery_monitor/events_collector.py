@@ -54,6 +54,10 @@ class EventsCollector:
 
         # worker -> last heartbeat timestamp
         self._worker_last_seen = {}  # type: Dict[str, float]
+        # worker -> celery version (from heartbeat)
+        self._worker_version = {}  # type: Dict[str, str]
+        # worker -> total tasks processed (from heartbeat)
+        self._worker_processed = {}  # type: Dict[str, int]
 
         self._state = self.app.events.State()
 
@@ -177,8 +181,22 @@ class EventsCollector:
             state.event(event)
             hostname = event.get("hostname", "")
             ts = event.get("timestamp") or 0
+            sw_ver = event.get("sw_ver")
+            processed = event.get("processed")
             with self._lock:
                 self._worker_last_seen[hostname] = ts
+                if sw_ver is not None:
+                    self._worker_version[hostname] = str(sw_ver)
+                if processed is not None:
+                    self._worker_processed[hostname] = int(processed)
+
+        def handle_worker_online(event):
+            # Same as heartbeat for version/processed
+            hostname = event.get("hostname", "")
+            sw_ver = event.get("sw_ver")
+            if hostname and sw_ver is not None:
+                with self._lock:
+                    self._worker_version[hostname] = str(sw_ver)
 
         return {
             "task-received": handle_task_received,
@@ -187,6 +205,7 @@ class EventsCollector:
             "task-failed": handle_task_failed,
             "task-retried": handle_task_retried,
             "worker-heartbeat": handle_worker_heartbeat,
+            "worker-online": handle_worker_online,
             "*": self._state.event,
         }
 
@@ -219,6 +238,8 @@ class EventsCollector:
                 "queue_throughput_in": dict(self._queue_throughput_in),
                 "queue_throughput_out": dict(self._queue_throughput_out),
                 "worker_last_seen": dict(self._worker_last_seen),
+                "worker_version": dict(self._worker_version),
+                "worker_processed": dict(self._worker_processed),
             }
 
             # Reset counters
@@ -259,4 +280,6 @@ class EventsCollector:
                 "queue_throughput_in": dict(self._queue_throughput_in),
                 "queue_throughput_out": dict(self._queue_throughput_out),
                 "worker_last_seen": dict(self._worker_last_seen),
+                "worker_version": dict(self._worker_version),
+                "worker_processed": dict(self._worker_processed),
             }

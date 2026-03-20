@@ -101,6 +101,15 @@ class ZabbixExporter:
             key = f"celery.worker.online[{_sanitize_key_param(worker)}]"
             items.append(ItemValue(self.hostname, key, int(ts)))
 
+        for worker, ver in events_data.get("worker_version", {}).items():
+            if ver:
+                key = f"celery.worker.version[{_sanitize_key_param(worker)}]"
+                items.append(ItemValue(self.hostname, key, str(ver)))
+
+        for worker, cnt in events_data.get("worker_processed", {}).items():
+            key = f"celery.worker.tasks.total[{_sanitize_key_param(worker)}]"
+            items.append(ItemValue(self.hostname, key, int(cnt)))
+
         return items
 
     def _items_from_inspect(self, inspect_data):
@@ -125,6 +134,32 @@ class ZabbixExporter:
             key = f"celery.worker.concurrency[{_sanitize_key_param(worker)}]"
             items.append(ItemValue(self.hostname, key, conc))
             online_count += 1
+
+            uptime = stats.get("uptime")
+            if uptime is not None:
+                key = f"celery.worker.uptime[{_sanitize_key_param(worker)}]"
+                items.append(ItemValue(self.hostname, key, float(uptime)))
+
+            pid = stats.get("pid")
+            if pid is not None:
+                key = f"celery.worker.pid[{_sanitize_key_param(worker)}]"
+                items.append(ItemValue(self.hostname, key, int(pid)))
+
+            prefetch = stats.get("prefetch_count")
+            if prefetch is not None:
+                key = f"celery.worker.prefetch_count[{_sanitize_key_param(worker)}]"
+                items.append(ItemValue(self.hostname, key, int(prefetch)))
+
+            # total from inspect as fallback when events has no heartbeat yet
+            total = stats.get("total")
+            if total is not None:
+                key = f"celery.worker.tasks.total[{_sanitize_key_param(worker)}]"
+                items.append(ItemValue(self.hostname, key, int(total)))
+
+            maxrss = stats.get("maxrss")
+            if maxrss is not None:
+                key = f"celery.worker.memory.maxrss[{_sanitize_key_param(worker)}]"
+                items.append(ItemValue(self.hostname, key, int(maxrss)))
 
         items.append(ItemValue(self.hostname, "celery.workers.online", online_count))
 
@@ -192,10 +227,10 @@ class ZabbixExporter:
         """Build and send all metrics to Zabbix."""
         items = []
 
-        if events_data:
-            items.extend(self._items_from_events(events_data, interval_sec))
         if inspect_data:
             items.extend(self._items_from_inspect(inspect_data))
+        if events_data:
+            items.extend(self._items_from_events(events_data, interval_sec))
         if queue_lengths:
             items.extend(self._items_from_queue_lengths(queue_lengths))
 

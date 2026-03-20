@@ -76,6 +76,12 @@ celery_monitor -A your_project.celery:app --discover workers
 | `celery.tasks.prefetched[worker_name]` | Prefetched (reserved) |
 | `celery.tasks.scheduled[worker_name]` | Запланированные |
 | `celery.worker.concurrency[worker_name]` | Concurrency воркера |
+| `celery.worker.uptime[worker_name]` | Uptime воркера (сек, inspect) |
+| `celery.worker.version[worker_name]` | Версия Celery (heartbeat) |
+| `celery.worker.tasks.total[worker_name]` | Всего обработано задач воркером |
+| `celery.worker.prefetch_count[worker_name]` | Prefetch count (inspect) |
+| `celery.worker.memory.maxrss[worker_name]` | Max RSS, KB (rusage, не везде) |
+| `celery.worker.pid[worker_name]` | PID процесса воркера |
 
 Task-level метрики (started, succeeded, failed, runtime) доступны только в daemon-режиме (требуют Events).
 

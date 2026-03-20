@@ -5,7 +5,7 @@ Loads configuration from YAML file (priority) and environment variables.
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 try:
     import yaml
@@ -14,12 +14,12 @@ except ImportError:
     HAS_YAML = False
 
 
-def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
+def load_config(config_path=None):  # type: (Optional[Union[str, Path]]) -> Dict[str, Any]
     """Load configuration from YAML and merge with environment variables.
 
     Environment variables override YAML values.
     """
-    config: dict[str, Any] = {
+    config = {
         "celery": {
             "app": "",
         },
@@ -27,6 +27,7 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
             "server": "127.0.0.1",
             "port": 10051,
             "hostname": "celery-host",
+            "debug_failed_items": False,  # when True, re-send failed items one by one to identify which keys fail
         },
         "interval": 60,
         "discovery_interval": 3600,  # seconds, 0 = disabled
@@ -67,7 +68,7 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
     return config
 
 
-def _deep_merge(base: dict, override: dict) -> None:
+def _deep_merge(base, override):
     """Merge override dict into base in-place."""
     for key, value in override.items():
         if key in base and isinstance(base[key], dict) and isinstance(value, dict):

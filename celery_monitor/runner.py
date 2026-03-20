@@ -5,7 +5,7 @@ import logging
 import sys
 import threading
 import time
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from .config import load_config
 from .events_collector import EventsCollector
@@ -15,7 +15,7 @@ from .zabbix_exporter import ZabbixExporter, _sanitize_key_param
 logger = logging.getLogger(__name__)
 
 
-def run_daemon(config: dict[str, Any], app, dry_run: bool = False) -> None:
+def run_daemon(config, app, dry_run=False):
     """Run event consumer in a thread and periodically send metrics to Zabbix."""
     interval = config.get("interval", 60)
     discovery_interval = config.get("discovery_interval", 3600)
@@ -29,6 +29,7 @@ def run_daemon(config: dict[str, Any], app, dry_run: bool = False) -> None:
             hostname=zabbix_cfg.get("hostname", "celery-host"),
             server=zabbix_cfg.get("server", "127.0.0.1"),
             port=int(zabbix_cfg.get("port", 10051)),
+            debug_failed_items=zabbix_cfg.get("debug_failed_items", False),
         )
 
     collector = EventsCollector(app, task_filter=tasks or None, queue_filter=queues or None)
@@ -98,7 +99,7 @@ def run_daemon(config: dict[str, Any], app, dry_run: bool = False) -> None:
     collector_done.set()
 
 
-def run_once(config: dict[str, Any], app, dry_run: bool = False) -> None:
+def run_once(config, app, dry_run=False):
     """One-shot: collect inspect + queue lengths, send to Zabbix, exit."""
     zabbix_cfg = config.get("zabbix", {})
     queues = config.get("queues") or []
@@ -127,6 +128,7 @@ def run_once(config: dict[str, Any], app, dry_run: bool = False) -> None:
         hostname=zabbix_cfg.get("hostname", "celery-host"),
         server=zabbix_cfg.get("server", "127.0.0.1"),
         port=int(zabbix_cfg.get("port", 10051)),
+        debug_failed_items=zabbix_cfg.get("debug_failed_items", False),
     )
     try:
         ok = exporter.send(
@@ -141,9 +143,9 @@ def run_once(config: dict[str, Any], app, dry_run: bool = False) -> None:
         sys.exit(1)
 
 
-def _get_discovery_data(config: dict[str, Any], app, target: str) -> list[dict[str, str]]:
+def _get_discovery_data(config, app, target):
     """Return LLD data for tasks, queues, or workers."""
-    data: list[dict[str, str]] = []
+    data = []  # type: List[Dict[str, str]]
 
     if target == "tasks":
         try:
@@ -175,7 +177,7 @@ def _get_discovery_data(config: dict[str, Any], app, target: str) -> list[dict[s
     return data
 
 
-def _run_discovery(config: dict[str, Any], app, exporter: ZabbixExporter | None, dry_run: bool) -> None:
+def _run_discovery(config, app, exporter, dry_run):
     """Run discovery for tasks, queues, workers and send to Zabbix or print."""
     for target in ("tasks", "queues", "workers"):
         data = _get_discovery_data(config, app, target)
@@ -186,7 +188,7 @@ def _run_discovery(config: dict[str, Any], app, exporter: ZabbixExporter | None,
             exporter.send_discovery(target, data)
 
 
-def run_discover(config: dict[str, Any], app, target: str) -> None:
+def run_discover(config, app, target):
     """Output LLD JSON for tasks, queues, or workers (CLI mode)."""
     data = _get_discovery_data(config, app, target)
     print(json.dumps({"data": data}))

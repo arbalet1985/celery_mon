@@ -84,6 +84,15 @@
                             <value_type>FLOAT</value_type>
                         </item_prototype>
                         <item_prototype>
+                            <uuid>be4401716abb4547ab89ce3f757b914d</uuid>
+                            <name>Celery task error [{#TASK_NAME}]</name>
+                            <type>TRAP</type>
+                            <key>celery.task.error[{#TASK_NAME}]</key>
+                            <delay>0</delay>
+                            <value_type>TEXT</value_type>
+                            <description>Last error message when task failed</description>
+                        </item_prototype>
+                        <item_prototype>
                             <uuid>ab003f240fd54e49a6240aa890611dfa</uuid>
                             <name>Celery task succeeded [{#TASK_NAME}]</name>
                             <type>TRAP</type>

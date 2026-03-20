@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 try:
     from zabbix_utils import ItemValue, Sender
@@ -24,25 +24,27 @@ class ZabbixExporter:
 
     def __init__(
         self,
-        hostname: str,
-        server: str = "127.0.0.1",
-        port: int = 10051,
-        chunk_size: int = 250,
-        retries: int = 2,
-    ) -> None:
+        hostname,
+        server="127.0.0.1",
+        port=10051,
+        chunk_size=250,
+        retries=2,
+        debug_failed_items=False,
+    ):
         if not HAS_ZABBIX:
             raise ImportError("zabbix_utils is required. Install with: pip install zabbix_utils")
         self.hostname = hostname
         self.sender = Sender(server=server, port=port, chunk_size=chunk_size)
         self.retries = retries
+        self.debug_failed_items = debug_failed_items
 
     def _items_from_events(
         self,
-        events_data: dict[str, Any],
-        interval_sec: float,
-    ) -> list:
+        events_data,
+        interval_sec,
+    ):
         """Build ItemValues from events collector data."""
-        items: list = []
+        items = []  # type: List
 
         items.append(ItemValue(self.hostname, "celery.task.started", events_data.get("task_started", 0)))
         items.append(ItemValue(self.hostname, "celery.task.succeeded", events_data.get("task_succeeded", 0)))
@@ -50,8 +52,13 @@ class ZabbixExporter:
         items.append(ItemValue(self.hostname, "celery.task.retried", events_data.get("task_retried", 0)))
 
         for task_name, count in events_data.get("task_failed_by_name", {}).items():
-            key = f"celery.task.failed[{_sanitize_key_param(task_name)}]"
+            key = "celery.task.failed[{}]".format(_sanitize_key_param(task_name))
             items.append(ItemValue(self.hostname, key, count))
+
+        for task_name, error_text in events_data.get("task_failed_error_by_name", {}).items():
+            if error_text:
+                key = "celery.task.error[{}]".format(_sanitize_key_param(task_name))
+                items.append(ItemValue(self.hostname, key, error_text))
 
         for task_name, count in events_data.get("task_succeeded_by_name", {}).items():
             key = f"celery.task.succeeded[{_sanitize_key_param(task_name)}]"
@@ -90,9 +97,9 @@ class ZabbixExporter:
 
         return items
 
-    def _items_from_inspect(self, inspect_data: dict[str, Any]) -> list:
+    def _items_from_inspect(self, inspect_data):
         """Build ItemValues from inspect data."""
-        items: list = []
+        items = []
 
         for worker, count in inspect_data.get("active", {}).items():
             key = f"celery.tasks.active[{_sanitize_key_param(worker)}]"
@@ -117,15 +124,15 @@ class ZabbixExporter:
 
         return items
 
-    def _items_from_queue_lengths(self, lengths: dict[str, int]) -> list:
+    def _items_from_queue_lengths(self, lengths):
         """Build ItemValues from queue lengths."""
-        items: list = []
+        items = []
         for queue, length in lengths.items():
             key = f"celery.queue.length[{_sanitize_key_param(queue)}]"
             items.append(ItemValue(self.hostname, key, length))
         return items
 
-    def send_discovery(self, target: str, lld_data: list[dict[str, str]]) -> bool:
+    def send_discovery(self, target, lld_data):
         """Send LLD JSON to Zabbix discovery rule via trapper.
 
         target: "tasks", "queues", or "workers"
@@ -150,15 +157,34 @@ class ZabbixExporter:
                 logger.warning("Zabbix discovery send attempt %d failed: %s", attempt + 1, e)
         return False
 
+    def _log_failed_items(self, items):
+        """Send each item individually to identify which keys fail."""
+        failed_keys = []
+        for item in items:
+            try:
+                resp = self.sender.send([item])
+                failed = getattr(resp, "failed", 1)
+                if failed > 0:
+                    failed_keys.append((item.key, "Zabbix rejected (processed=%s failed=%s)" % (
+                        getattr(resp, "processed", "?"),
+                        getattr(resp, "failed", "?"),
+                    )))
+            except Exception as e:
+                failed_keys.append((item.key, str(e)))
+        if failed_keys:
+            logger.warning("Zabbix failed items (debug mode):")
+            for key, err in failed_keys:
+                logger.warning("  - %s: %s", key, err)
+
     def send(
         self,
-        events_data: dict[str, Any] | None = None,
-        inspect_data: dict[str, Any] | None = None,
-        queue_lengths: dict[str, int] | None = None,
-        interval_sec: float = 60.0,
-    ) -> bool:
+        events_data=None,
+        inspect_data=None,
+        queue_lengths=None,
+        interval_sec=60.0,
+    ):
         """Build and send all metrics to Zabbix."""
-        items: list = []
+        items = []
 
         if events_data:
             items.extend(self._items_from_events(events_data, interval_sec))
@@ -182,7 +208,14 @@ class ZabbixExporter:
                 if failed == 0:
                     logger.debug("Sent %d items to Zabbix", len(items))
                     return True
-                logger.warning("Zabbix send partial/failed: %s", resp)
+                processed = getattr(resp, "processed", "?")
+                total = getattr(resp, "total", len(items))
+                logger.warning(
+                    "Zabbix send partial/failed: processed=%s failed=%s total=%s",
+                    processed, failed, total
+                )
+                if self.debug_failed_items and failed > 0:
+                    self._log_failed_items(items)
             except Exception as e:
                 logger.warning("Zabbix send attempt %d failed: %s", attempt + 1, e)
         return False

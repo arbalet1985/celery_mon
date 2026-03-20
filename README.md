@@ -50,6 +50,7 @@ celery_monitor -A your_project.celery:app --discover workers
 - `interval` — интервал отправки метрик в секундах (для daemon)
 - `discovery_interval` — интервал discovery (tasks, queues, workers) в секундах; 0 — отключить. Daemon отправляет LLD через trapper
 - `queues`, `tasks` — опциональные фильтры
+- `zabbix.debug_failed_items` — при `true` при частичном фейле отправки пересылает каждый item отдельно и логирует, какие ключи не принял Zabbix
 
 Переменные окружения: `CELERY_APP`, `ZABBIX_SERVER`, `ZABBIX_PORT`, `ZABBIX_HOSTNAME`, `CELERY_MON_INTERVAL`, `CELERY_MON_DISCOVERY_INTERVAL`.
 
@@ -62,6 +63,7 @@ celery_monitor -A your_project.celery:app --discover workers
 | `celery.task.failed` | Завершившихся с ошибкой |
 | `celery.task.retried` | Ретраев |
 | `celery.task.failed[task_name]` | Ошибки по задаче |
+| `celery.task.error[task_name]` | Текст последней ошибки при фейле задачи |
 | `celery.task.succeeded[task_name]` | Успехи по задаче |
 | `celery.task.runtime.avg[task_name]` | Среднее время выполнения |
 | `celery.queue.length[queue_name]` | Длина очереди |

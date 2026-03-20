@@ -9,7 +9,7 @@ from .metrics import get_celery_app
 from .runner import run_daemon, run_discover, run_once
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(
         description="Collect Celery metrics and send to Zabbix",
     )
@@ -53,6 +53,11 @@ def main() -> None:
         action="store_true",
         help="Print metrics to stdout instead of sending to Zabbix",
     )
+    parser.add_argument(
+        "--debug-failed-items",
+        action="store_true",
+        help="When Zabbix rejects items, re-send each one individually to log which keys fail",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -62,6 +67,8 @@ def main() -> None:
     logger = logging.getLogger(__name__)
 
     config = load_config(args.config)
+    if args.debug_failed_items:
+        config.setdefault("zabbix", {})["debug_failed_items"] = True
     app_path = args.celery_app or config.get("celery", {}).get("app", "")
     if not app_path:
         logger.error("Celery app not specified. Use -A or set CELERY_APP or celery.app in config.")

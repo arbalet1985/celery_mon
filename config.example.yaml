@@ -8,6 +8,8 @@ zabbix:
   server: "zabbix.example.com"
   port: 10051
   hostname: "celery-production-1"
+  # When true, on send failure re-send each item individually to identify which keys fail
+  debug_failed_items: false
 
 # Send interval in seconds (daemon mode)
 interval: 60

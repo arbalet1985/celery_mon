@@ -7,7 +7,7 @@ task-received, worker-heartbeat events into in-memory counters.
 import logging
 import threading
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 if TYPE_CHECKING:
     from celery import Celery
@@ -20,13 +20,13 @@ class EventsCollector:
 
     def __init__(
         self,
-        app: "Celery",
-        task_filter: list[str] | None = None,
-        queue_filter: list[str] | None = None,
-    ) -> None:
+        app,  # Celery
+        task_filter=None,  # type: Optional[List[str]]
+        queue_filter=None,  # type: Optional[List[str]]
+    ):
         self.app = app
-        self.task_filter = set(task_filter or [])
-        self.queue_filter = set(queue_filter or [])
+        self.task_filter = set(task_filter or [])  # type: Set[str]
+        self.queue_filter = set(queue_filter or [])  # type: Set[str]
 
         self._lock = threading.Lock()
         self._task_started = 0
@@ -35,35 +35,37 @@ class EventsCollector:
         self._task_retried = 0
 
         # Per-task counters
-        self._task_started_by_name: dict[str, int] = defaultdict(int)
-        self._task_succeeded_by_name: dict[str, int] = defaultdict(int)
-        self._task_failed_by_name: dict[str, int] = defaultdict(int)
-        self._task_retried_by_name: dict[str, int] = defaultdict(int)
+        self._task_started_by_name = defaultdict(int)  # type: Dict[str, int]
+        self._task_succeeded_by_name = defaultdict(int)  # type: Dict[str, int]
+        self._task_failed_by_name = defaultdict(int)  # type: Dict[str, int]
+        self._task_retried_by_name = defaultdict(int)  # type: Dict[str, int]
+        # Last error message per task (for failed tasks)
+        self._task_failed_error_by_name = {}  # type: Dict[str, str]
 
         # Runtime for avg: sum and count per task
-        self._runtime_sum_by_name: dict[str, float] = defaultdict(float)
-        self._runtime_count_by_name: dict[str, int] = defaultdict(int)
+        self._runtime_sum_by_name = defaultdict(float)  # type: Dict[str, float]
+        self._runtime_count_by_name = defaultdict(int)  # type: Dict[str, int]
 
         # task_id -> (queue, received_ts) for latency
-        self._pending_tasks: dict[str, tuple[str, float]] = {}
-        self._queue_latencies: dict[str, list[float]] = defaultdict(list)
-        self._queue_throughput_in: dict[str, int] = defaultdict(int)
-        self._queue_throughput_out: dict[str, int] = defaultdict(int)
+        self._pending_tasks = {}  # type: Dict[str, Tuple[str, float]]
+        self._queue_latencies = defaultdict(list)  # type: Dict[str, List[float]]
+        self._queue_throughput_in = defaultdict(int)  # type: Dict[str, int]
+        self._queue_throughput_out = defaultdict(int)  # type: Dict[str, int]
 
         # worker -> last heartbeat timestamp
-        self._worker_last_seen: dict[str, float] = {}
+        self._worker_last_seen = {}  # type: Dict[str, float]
 
         self._state = self.app.events.State()
 
-    def _should_track_task(self, task_name: str, queue: str) -> bool:
+    def _should_track_task(self, task_name, queue):
         if self.task_filter and task_name not in self.task_filter:
             return False
         if self.queue_filter and queue and queue not in self.queue_filter:
             return False
         return True
 
-    def _get_handlers(self) -> dict[str, Any]:
-        def handle_task_received(event: dict) -> None:
+    def _get_handlers(self):
+        def handle_task_received(event):
             state = self._state
             state.event(event)
             task = state.tasks.get(event.get("uuid"))
@@ -78,7 +80,7 @@ class EventsCollector:
                 self._pending_tasks[event["uuid"]] = (queue, ts)
                 self._queue_throughput_in[queue] += 1
 
-        def handle_task_started(event: dict) -> None:
+        def handle_task_started(event):
             state = self._state
             state.event(event)
             task = state.tasks.get(event.get("uuid"))
@@ -101,7 +103,7 @@ class EventsCollector:
                     if recv_ts > 0:
                         self._queue_latencies[q].append(started_ts - recv_ts)
 
-        def handle_task_succeeded(event: dict) -> None:
+        def handle_task_succeeded(event):
             state = self._state
             state.event(event)
             task = state.tasks.get(event.get("uuid"))
@@ -119,7 +121,7 @@ class EventsCollector:
                     self._runtime_sum_by_name[task_name] += float(runtime)
                     self._runtime_count_by_name[task_name] += 1
 
-        def handle_task_failed(event: dict) -> None:
+        def handle_task_failed(event):
             state = self._state
             state.event(event)
             task = state.tasks.get(event.get("uuid"))
@@ -127,11 +129,27 @@ class EventsCollector:
             queue = getattr(task, "queue", "unknown") if task else "unknown"
             if not self._should_track_task(task_name, queue):
                 return
+            # Get error message from event or task state
+            error_text = ""
+            exc = event.get("exception")
+            if exc is not None:
+                error_text = str(exc) if not isinstance(exc, str) else exc
+            if not error_text and event.get("traceback"):
+                tb = str(event["traceback"])
+                lines = [L.strip() for L in tb.split("\n") if L.strip()]
+                error_text = lines[-1] if lines else ""
+            if not error_text and task and getattr(task, "exception", None):
+                error_text = str(task.exception)
+            # Truncate for Zabbix text item (often 64KB limit, we use 2000 for readability)
+            if len(error_text) > 2000:
+                error_text = error_text[:1997] + "..."
             with self._lock:
                 self._task_failed += 1
                 self._task_failed_by_name[task_name] += 1
+                if error_text:
+                    self._task_failed_error_by_name[task_name] = error_text
 
-        def handle_task_retried(event: dict) -> None:
+        def handle_task_retried(event):
             state = self._state
             state.event(event)
             task = state.tasks.get(event.get("uuid"))
@@ -143,7 +161,7 @@ class EventsCollector:
                 self._task_retried += 1
                 self._task_retried_by_name[task_name] += 1
 
-        def handle_worker_heartbeat(event: dict) -> None:
+        def handle_worker_heartbeat(event):
             state = self._state
             state.event(event)
             hostname = event.get("hostname", "")
@@ -161,7 +179,7 @@ class EventsCollector:
             "*": self._state.event,
         }
 
-    def run(self, limit: int | None = None, timeout: float | None = None) -> None:
+    def run(self, limit=None, timeout=None):
         """Blocking: capture events. Used in daemon mode in a thread."""
         handlers = self._get_handlers()
         try:
@@ -171,7 +189,7 @@ class EventsCollector:
         except Exception as e:
             logger.error("Events receiver error: %s", e, exc_info=True)
 
-    def get_and_reset(self) -> dict[str, Any]:
+    def get_and_reset(self):
         """Return current counters and reset them for next interval."""
         with self._lock:
             data = {
@@ -182,6 +200,7 @@ class EventsCollector:
                 "task_started_by_name": dict(self._task_started_by_name),
                 "task_succeeded_by_name": dict(self._task_succeeded_by_name),
                 "task_failed_by_name": dict(self._task_failed_by_name),
+                "task_failed_error_by_name": dict(self._task_failed_error_by_name),
                 "task_retried_by_name": dict(self._task_retried_by_name),
                 "runtime_sum_by_name": dict(self._runtime_sum_by_name),
                 "runtime_count_by_name": dict(self._runtime_count_by_name),
@@ -199,6 +218,7 @@ class EventsCollector:
             self._task_started_by_name.clear()
             self._task_succeeded_by_name.clear()
             self._task_failed_by_name.clear()
+            self._task_failed_error_by_name.clear()
             self._task_retried_by_name.clear()
             self._runtime_sum_by_name.clear()
             self._runtime_count_by_name.clear()
@@ -209,7 +229,7 @@ class EventsCollector:
 
         return data
 
-    def get_snapshot(self) -> dict[str, Any]:
+    def get_snapshot(self):
         """Non-destructive snapshot of current counters (for inspection)."""
         with self._lock:
             return {
@@ -220,6 +240,7 @@ class EventsCollector:
                 "task_started_by_name": dict(self._task_started_by_name),
                 "task_succeeded_by_name": dict(self._task_succeeded_by_name),
                 "task_failed_by_name": dict(self._task_failed_by_name),
+                "task_failed_error_by_name": dict(self._task_failed_error_by_name),
                 "task_retried_by_name": dict(self._task_retried_by_name),
                 "runtime_sum_by_name": dict(self._runtime_sum_by_name),
                 "runtime_count_by_name": dict(self._runtime_count_by_name),

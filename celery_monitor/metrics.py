@@ -1,7 +1,7 @@
 """Collects metrics from Celery inspect API and Redis broker."""
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from celery import Celery
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 REDIS_PRIORITY_SUFFIXES = ("", "\x06\x163", "\x06\x166", "\x06\x169")
 
 
-def get_celery_app(app_path: str):
+def get_celery_app(app_path):
     """Load Celery app from string like 'project.celery:app'."""
     if ":" in app_path:
         module_path, attr = app_path.rsplit(":", 1)
@@ -24,9 +24,9 @@ def get_celery_app(app_path: str):
     return getattr(mod, attr)
 
 
-def collect_inspect(app: "Celery", timeout: float = 5.0) -> dict[str, Any]:
+def collect_inspect(app, timeout=5.0):
     """Collect worker stats via inspect API."""
-    result: dict[str, Any] = {
+    result = {
         "active": {},
         "reserved": {},
         "scheduled": {},
@@ -80,7 +80,7 @@ def collect_inspect(app: "Celery", timeout: float = 5.0) -> dict[str, Any]:
     return result
 
 
-def get_queue_list(app: "Celery") -> list[str]:
+def get_queue_list(app):
     """Get list of queue names from app config or default."""
     queues = []
     task_queues = getattr(app.conf, "task_queues", None)
@@ -98,9 +98,9 @@ def get_queue_list(app: "Celery") -> list[str]:
     return queues
 
 
-def collect_queue_lengths(app: "Celery", queues: list[str] | None = None) -> dict[str, int]:
+def collect_queue_lengths(app, queues=None):
     """Collect queue lengths from Redis via broker connection."""
-    lengths: dict[str, int] = {}
+    lengths = {}
     qlist = queues or get_queue_list(app)
     try:
         with app.connection_or_acquire() as conn:
@@ -128,9 +128,9 @@ def collect_queue_lengths(app: "Celery", queues: list[str] | None = None) -> dic
     return lengths
 
 
-def discover_queues_via_redis(app: "Celery") -> list[str]:
+def discover_queues_via_redis(app):
     """Discover queue names from Redis keys (with caution - may include non-Celery keys)."""
-    seen: set[str] = set()
+    seen = set()
     try:
         with app.connection_or_acquire() as conn:
             default_channel = conn.default_channel

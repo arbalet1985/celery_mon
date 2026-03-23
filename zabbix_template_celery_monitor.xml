@@ -171,6 +171,7 @@
                             <key>celery.worker.online[{#WORKER_NAME}]</key>
                             <delay>0</delay>
                             <value_type>FLOAT</value_type>
+                            <units>unixtime</units>
                             <description>Last heartbeat timestamp</description>
                         </item_prototype>
                         <item_prototype>

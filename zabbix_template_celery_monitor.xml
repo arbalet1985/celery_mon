@@ -206,7 +206,7 @@
                             <value_type>FLOAT</value_type>
                         </item_prototype>
                         <item_prototype>
-                            <uuid>a1b2c3d4e5f64789a0b1c2d3e4f56789</uuid>
+                            <uuid>f7f6b3dde4794e8d9a5cb1b72740cc30</uuid>
                             <name>Celery worker uptime [{#WORKER_NAME}]</name>
                             <type>TRAP</type>
                             <key>celery.worker.uptime[{#WORKER_NAME}]</key>
@@ -216,7 +216,7 @@
                             <description>Worker uptime in seconds (from inspect)</description>
                         </item_prototype>
                         <item_prototype>
-                            <uuid>b2c3d4e5f6a74980b1c2d3e4f5a67890</uuid>
+                            <uuid>2cea5b7dbd9d4efebe8871cad6cf713a</uuid>
                             <name>Celery worker version [{#WORKER_NAME}]</name>
                             <type>TRAP</type>
                             <key>celery.worker.version[{#WORKER_NAME}]</key>
@@ -225,7 +225,7 @@
                             <description>Celery version from worker heartbeat</description>
                         </item_prototype>
                         <item_prototype>
-                            <uuid>c3d4e5f6a7b84a91c2d3e4f5a6b78901</uuid>
+                            <uuid>7b3cbe66d7bd46c280aa7676f3f94ab7</uuid>
                             <name>Celery worker tasks total [{#WORKER_NAME}]</name>
                             <type>TRAP</type>
                             <key>celery.worker.tasks.total[{#WORKER_NAME}]</key>
@@ -234,7 +234,7 @@
                             <description>Total tasks processed by worker (heartbeat or inspect)</description>
                         </item_prototype>
                         <item_prototype>
-                            <uuid>d4e5f6a7b8c94ba2d3e4f5a6b7c89012</uuid>
+                            <uuid>8fc1042ef4f24ba894b0730c9c0927b4</uuid>
                             <name>Celery worker prefetch count [{#WORKER_NAME}]</name>
                             <type>TRAP</type>
                             <key>celery.worker.prefetch_count[{#WORKER_NAME}]</key>
@@ -243,7 +243,7 @@
                             <description>Prefetch count from inspect</description>
                         </item_prototype>
                         <item_prototype>
-                            <uuid>e5f6a7b8c9d04cb3e4f5a6b7c8d90123</uuid>
+                            <uuid>a24ea79a39614f288e417e067f2a91cb</uuid>
                             <name>Celery worker memory maxrss [{#WORKER_NAME}]</name>
                             <type>TRAP</type>
                             <key>celery.worker.memory.maxrss[{#WORKER_NAME}]</key>
@@ -253,7 +253,7 @@
                             <description>Max RSS memory (KB), from rusage, may be unavailable on some platforms</description>
                         </item_prototype>
                         <item_prototype>
-                            <uuid>f6a7b8c9d0e14dc4f5a6b7c8d9e01234</uuid>
+                            <uuid>cf89a5f596e94977bac6b81ff951dd48</uuid>
                             <name>Celery worker PID [{#WORKER_NAME}]</name>
                             <type>TRAP</type>
                             <key>celery.worker.pid[{#WORKER_NAME}]</key>

@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 
 def _sanitize_key_param(value: str) -> str:
     """Replace chars that break Zabbix item keys. Exported for LLD consistency."""
+    if not value:
+        return "unknown"
+
     return value.replace(".", "_").replace(" ", "_").replace("[", "_").replace("]", "_")
 
 

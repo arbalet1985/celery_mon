@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>6.0</version>
-    <date>2025-03-10T12:00:00Z</date>
+    <date>2026-03-27T03:38:45Z</date>
     <groups>
         <group>
             <uuid>39b58e86f88c4ae88926fe6c8d91a5e3</uuid>
@@ -21,24 +21,6 @@
             </groups>
             <items>
                 <item>
-                    <uuid>e70d11d21c6743d7b2c0ca3277f40706</uuid>
-                    <name>Celery tasks started</name>
-                    <type>TRAP</type>
-                    <key>celery.task.started</key>
-                    <delay>0</delay>
-                    <value_type>FLOAT</value_type>
-                    <description>Number of started tasks per interval</description>
-                </item>
-                <item>
-                    <uuid>3a71394b301e4d93888f1a3d2cff6005</uuid>
-                    <name>Celery tasks succeeded</name>
-                    <type>TRAP</type>
-                    <key>celery.task.succeeded</key>
-                    <delay>0</delay>
-                    <value_type>FLOAT</value_type>
-                    <description>Number of successfully completed tasks per interval</description>
-                </item>
-                <item>
                     <uuid>a3eafe4cfed34dae90bee8281d811889</uuid>
                     <name>Celery tasks failed</name>
                     <type>TRAP</type>
@@ -57,6 +39,24 @@
                     <description>Number of retried tasks per interval</description>
                 </item>
                 <item>
+                    <uuid>e70d11d21c6743d7b2c0ca3277f40706</uuid>
+                    <name>Celery tasks started</name>
+                    <type>TRAP</type>
+                    <key>celery.task.started</key>
+                    <delay>0</delay>
+                    <value_type>FLOAT</value_type>
+                    <description>Number of started tasks per interval</description>
+                </item>
+                <item>
+                    <uuid>3a71394b301e4d93888f1a3d2cff6005</uuid>
+                    <name>Celery tasks succeeded</name>
+                    <type>TRAP</type>
+                    <key>celery.task.succeeded</key>
+                    <delay>0</delay>
+                    <value_type>FLOAT</value_type>
+                    <description>Number of successfully completed tasks per interval</description>
+                </item>
+                <item>
                     <uuid>78c1a1bed6334885ac5908c51e9582e5</uuid>
                     <name>Celery workers online</name>
                     <type>TRAP</type>
@@ -68,65 +68,13 @@
             </items>
             <discovery_rules>
                 <discovery_rule>
-                    <uuid>85a20d86d09d4e74947074ead3ac1010</uuid>
-                    <name>Celery tasks discovery</name>
-                    <key>celery.discover[tasks]</key>
-                    <type>TRAP</type>
-                    <delay>1h</delay>
-                    <description>LLD sent by celery_monitor daemon (config: discovery_interval). Or UserParameter=celery.discover[*],/path/to/celery_monitor -A your_app --discover $1</description>
-                    <item_prototypes>
-                        <item_prototype>
-                            <uuid>80c2fe67c36a4d9aad17fe166782231a</uuid>
-                            <name>Celery task failed [{#TASK_NAME}]</name>
-                            <type>TRAP</type>
-                            <key>celery.task.failed[{#TASK_NAME}]</key>
-                            <delay>0</delay>
-                            <value_type>FLOAT</value_type>
-                        </item_prototype>
-                        <item_prototype>
-                            <uuid>be4401716abb4547ab89ce3f757b914d</uuid>
-                            <name>Celery task error [{#TASK_NAME}]</name>
-                            <type>TRAP</type>
-                            <key>celery.task.error[{#TASK_NAME}]</key>
-                            <delay>0</delay>
-                            <value_type>TEXT</value_type>
-                            <description>Last error message when task failed</description>
-                        </item_prototype>
-                        <item_prototype>
-                            <uuid>ab003f240fd54e49a6240aa890611dfa</uuid>
-                            <name>Celery task succeeded [{#TASK_NAME}]</name>
-                            <type>TRAP</type>
-                            <key>celery.task.succeeded[{#TASK_NAME}]</key>
-                            <delay>0</delay>
-                            <value_type>FLOAT</value_type>
-                        </item_prototype>
-                        <item_prototype>
-                            <uuid>043a80ad19e847d3a5f252b6b5f86c62</uuid>
-                            <name>Celery task runtime avg [{#TASK_NAME}]</name>
-                            <type>TRAP</type>
-                            <key>celery.task.runtime.avg[{#TASK_NAME}]</key>
-                            <delay>0</delay>
-                            <value_type>FLOAT</value_type>
-                            <units>s</units>
-                        </item_prototype>
-                    </item_prototypes>
-                </discovery_rule>
-                <discovery_rule>
                     <uuid>234ec841ce724c0ea90fefa543fccd86</uuid>
                     <name>Celery queues discovery</name>
-                    <key>celery.discover[queues]</key>
                     <type>TRAP</type>
-                    <delay>1h</delay>
+                    <key>celery.discover[queues]</key>
+                    <delay>0</delay>
                     <description>LLD from daemon (discovery_interval) or UserParameter --discover queues</description>
                     <item_prototypes>
-                        <item_prototype>
-                            <uuid>a7b36316d0da4e1c958b665ee95a4b4a</uuid>
-                            <name>Celery queue length [{#QUEUE_NAME}]</name>
-                            <type>TRAP</type>
-                            <key>celery.queue.length[{#QUEUE_NAME}]</key>
-                            <delay>0</delay>
-                            <value_type>FLOAT</value_type>
-                        </item_prototype>
                         <item_prototype>
                             <uuid>c662adb8fe23463db9e6e416d77a2a72</uuid>
                             <name>Celery queue latency [{#QUEUE_NAME}]</name>
@@ -135,6 +83,14 @@
                             <delay>0</delay>
                             <value_type>FLOAT</value_type>
                             <units>s</units>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>a7b36316d0da4e1c958b665ee95a4b4a</uuid>
+                            <name>Celery queue length [{#QUEUE_NAME}]</name>
+                            <type>TRAP</type>
+                            <key>celery.queue.length[{#QUEUE_NAME}]</key>
+                            <delay>0</delay>
+                            <value_type>FLOAT</value_type>
                         </item_prototype>
                         <item_prototype>
                             <uuid>8c0de85f619d431fa06dc088f7adb351</uuid>
@@ -157,31 +113,85 @@
                     </item_prototypes>
                 </discovery_rule>
                 <discovery_rule>
-                    <uuid>5e25c96c27a04d02adb1275ce1bc391b</uuid>
-                    <name>Celery workers discovery</name>
-                    <key>celery.discover[workers]</key>
+                    <uuid>85a20d86d09d4e74947074ead3ac1010</uuid>
+                    <name>Celery tasks discovery</name>
                     <type>TRAP</type>
-                    <delay>1h</delay>
-                    <description>LLD from daemon (discovery_interval) or UserParameter --discover workers</description>
+                    <key>celery.discover[tasks]</key>
+                    <delay>0</delay>
+                    <description>LLD sent by celery_monitor daemon (config: discovery_interval). Or UserParameter=celery.discover[*],/path/to/celery_monitor -A your_app --discover $1</description>
                     <item_prototypes>
                         <item_prototype>
-                            <uuid>fc51ff52d7994813a98a3e9314e93c2e</uuid>
-                            <name>Celery worker online [{#WORKER_NAME}]</name>
-                            <type>TRAP</type>
-                            <key>celery.worker.online[{#WORKER_NAME}]</key>
-                            <delay>0</delay>
+                            <uuid>fc2f4b71f7dc4ba3b51de327f359203b</uuid>
+                            <name>Celery prc succeeded task [{#TASK_NAME}]</name>
+                            <type>CALCULATED</type>
+                            <key>celery.prc.succeeded.task[{#TASK_NAME}]</key>
+                            <delay>10m</delay>
                             <value_type>FLOAT</value_type>
-                            <units>unixtime</units>
-                            <description>Last heartbeat timestamp</description>
+                            <params>sum(//celery.task.succeeded[{#TASK_NAME}],24h)
+/
+(
+sum(//celery.task.succeeded[{#TASK_NAME}],24h)
++
+sum(//celery.task.failed[{#TASK_NAME}],24h)
+)</params>
                         </item_prototype>
                         <item_prototype>
-                            <uuid>7c36e11f8ca64b57afb3b04d99a45122</uuid>
-                            <name>Celery worker concurrency [{#WORKER_NAME}]</name>
+                            <uuid>be4401716abb4547ab89ce3f757b914d</uuid>
+                            <name>Celery task error [{#TASK_NAME}]</name>
                             <type>TRAP</type>
-                            <key>celery.worker.concurrency[{#WORKER_NAME}]</key>
+                            <key>celery.task.error[{#TASK_NAME}]</key>
+                            <delay>0</delay>
+                            <trends>0</trends>
+                            <value_type>TEXT</value_type>
+                            <description>Last error message when task failed</description>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>80c2fe67c36a4d9aad17fe166782231a</uuid>
+                            <name>Celery task failed [{#TASK_NAME}]</name>
+                            <type>TRAP</type>
+                            <key>celery.task.failed[{#TASK_NAME}]</key>
                             <delay>0</delay>
                             <value_type>FLOAT</value_type>
                         </item_prototype>
+                        <item_prototype>
+                            <uuid>043a80ad19e847d3a5f252b6b5f86c62</uuid>
+                            <name>Celery task runtime avg [{#TASK_NAME}]</name>
+                            <type>TRAP</type>
+                            <key>celery.task.runtime.avg[{#TASK_NAME}]</key>
+                            <delay>0</delay>
+                            <value_type>FLOAT</value_type>
+                            <units>s</units>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>ab003f240fd54e49a6240aa890611dfa</uuid>
+                            <name>Celery task succeeded [{#TASK_NAME}]</name>
+                            <type>TRAP</type>
+                            <key>celery.task.succeeded[{#TASK_NAME}]</key>
+                            <delay>0</delay>
+                            <value_type>FLOAT</value_type>
+                        </item_prototype>
+                    </item_prototypes>
+                    <trigger_prototypes>
+                        <trigger_prototype>
+                            <uuid>3d1c86edcbff4069855372787d48fc3d</uuid>
+                            <expression>sum(/Template App Celery Monitor/celery.task.succeeded[{#TASK_NAME}],24h)/
+(
+sum(/Template App Celery Monitor/celery.task.failed[{#TASK_NAME}],24h)
++
+sum(/Template App Celery Monitor/celery.task.succeeded[{#TASK_NAME}],24h)
+)&lt;0.7</expression>
+                            <name>Celery Процент успешности запуска {#TASK_NAME} менее 70%</name>
+                        </trigger_prototype>
+                    </trigger_prototypes>
+                </discovery_rule>
+                <discovery_rule>
+                    <uuid>5e25c96c27a04d02adb1275ce1bc391b</uuid>
+                    <name>Celery workers discovery</name>
+                    <type>TRAP</type>
+                    <key>celery.discover[workers]</key>
+                    <delay>0</delay>
+                    <description>LLD from daemon (discovery_interval) or UserParameter --discover workers</description>
+                    <item_prototypes>
                         <item_prototype>
                             <uuid>81809e37194e4c0c92bb8bb7893079c2</uuid>
                             <name>Celery tasks active [{#WORKER_NAME}]</name>
@@ -207,6 +217,57 @@
                             <value_type>FLOAT</value_type>
                         </item_prototype>
                         <item_prototype>
+                            <uuid>7c36e11f8ca64b57afb3b04d99a45122</uuid>
+                            <name>Celery worker concurrency [{#WORKER_NAME}]</name>
+                            <type>TRAP</type>
+                            <key>celery.worker.concurrency[{#WORKER_NAME}]</key>
+                            <delay>0</delay>
+                            <value_type>FLOAT</value_type>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>a24ea79a39614f288e417e067f2a91cb</uuid>
+                            <name>Celery worker memory maxrss [{#WORKER_NAME}]</name>
+                            <type>TRAP</type>
+                            <key>celery.worker.memory.maxrss[{#WORKER_NAME}]</key>
+                            <delay>0</delay>
+                            <units>KB</units>
+                            <description>Max RSS memory (KB), from rusage, may be unavailable on some platforms</description>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>fc51ff52d7994813a98a3e9314e93c2e</uuid>
+                            <name>Celery worker online [{#WORKER_NAME}]</name>
+                            <type>TRAP</type>
+                            <key>celery.worker.online[{#WORKER_NAME}]</key>
+                            <delay>0</delay>
+                            <value_type>FLOAT</value_type>
+                            <units>unixtime</units>
+                            <description>Last heartbeat timestamp</description>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>cf89a5f596e94977bac6b81ff951dd48</uuid>
+                            <name>Celery worker PID [{#WORKER_NAME}]</name>
+                            <type>TRAP</type>
+                            <key>celery.worker.pid[{#WORKER_NAME}]</key>
+                            <delay>0</delay>
+                            <description>Worker process ID</description>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>8fc1042ef4f24ba894b0730c9c0927b4</uuid>
+                            <name>Celery worker prefetch count [{#WORKER_NAME}]</name>
+                            <type>TRAP</type>
+                            <key>celery.worker.prefetch_count[{#WORKER_NAME}]</key>
+                            <delay>0</delay>
+                            <description>Prefetch count from inspect</description>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>7b3cbe66d7bd46c280aa7676f3f94ab7</uuid>
+                            <name>Celery worker tasks total [{#WORKER_NAME}]</name>
+                            <type>TRAP</type>
+                            <key>celery.worker.tasks.total[{#WORKER_NAME}]</key>
+                            <delay>0</delay>
+                            <description>Total tasks processed by worker (heartbeat or inspect)</description>
+                        </item_prototype>
+                        <item_prototype>
                             <uuid>f7f6b3dde4794e8d9a5cb1b72740cc30</uuid>
                             <name>Celery worker uptime [{#WORKER_NAME}]</name>
                             <type>TRAP</type>
@@ -222,45 +283,9 @@
                             <type>TRAP</type>
                             <key>celery.worker.version[{#WORKER_NAME}]</key>
                             <delay>0</delay>
+                            <trends>0</trends>
                             <value_type>TEXT</value_type>
                             <description>Celery version from worker heartbeat</description>
-                        </item_prototype>
-                        <item_prototype>
-                            <uuid>7b3cbe66d7bd46c280aa7676f3f94ab7</uuid>
-                            <name>Celery worker tasks total [{#WORKER_NAME}]</name>
-                            <type>TRAP</type>
-                            <key>celery.worker.tasks.total[{#WORKER_NAME}]</key>
-                            <delay>0</delay>
-                            <value_type>UNSIGNED</value_type>
-                            <description>Total tasks processed by worker (heartbeat or inspect)</description>
-                        </item_prototype>
-                        <item_prototype>
-                            <uuid>8fc1042ef4f24ba894b0730c9c0927b4</uuid>
-                            <name>Celery worker prefetch count [{#WORKER_NAME}]</name>
-                            <type>TRAP</type>
-                            <key>celery.worker.prefetch_count[{#WORKER_NAME}]</key>
-                            <delay>0</delay>
-                            <value_type>UNSIGNED</value_type>
-                            <description>Prefetch count from inspect</description>
-                        </item_prototype>
-                        <item_prototype>
-                            <uuid>a24ea79a39614f288e417e067f2a91cb</uuid>
-                            <name>Celery worker memory maxrss [{#WORKER_NAME}]</name>
-                            <type>TRAP</type>
-                            <key>celery.worker.memory.maxrss[{#WORKER_NAME}]</key>
-                            <delay>0</delay>
-                            <value_type>UNSIGNED</value_type>
-                            <units>KB</units>
-                            <description>Max RSS memory (KB), from rusage, may be unavailable on some platforms</description>
-                        </item_prototype>
-                        <item_prototype>
-                            <uuid>cf89a5f596e94977bac6b81ff951dd48</uuid>
-                            <name>Celery worker PID [{#WORKER_NAME}]</name>
-                            <type>TRAP</type>
-                            <key>celery.worker.pid[{#WORKER_NAME}]</key>
-                            <delay>0</delay>
-                            <value_type>UNSIGNED</value_type>
-                            <description>Worker process ID</description>
                         </item_prototype>
                     </item_prototypes>
                 </discovery_rule>
